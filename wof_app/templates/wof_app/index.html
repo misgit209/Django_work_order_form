@@ -1,0 +1,935 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Order Form</title>
+    <link rel="stylesheet" href="{% static 'wof_app/css/style.css' %}">
+    <!-- Include html5-qrcode library -->
+    <script src="https://unpkg.com/html5-qrcode@2.2.1/html5-qrcode.min.js"></script>
+
+
+<style>
+    /* Your existing CSS styles remain the same */
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+        background-color: #f5f5f5;
+        padding: 20px;
+        max-width: 1000px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+
+    .container {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        padding: 25px;
+        margin-bottom: 25px;
+    }
+
+    .header {
+        text-align: center;
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e8f4f8;
+    }
+
+    .header h1 {
+        color: #2c3e50;
+        font-size: 28px;
+        margin-bottom: 8px;
+    }
+
+    .form-group {
+        margin-bottom: 22px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #34495e;
+        font-size: 16px;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="number"],
+    select,
+    textarea {
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        font-size: 16px;
+        background-color: #fafbfc;
+        transition: all 0.3s ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        background-color: white;
+    }
+
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -12px;
+    }
+
+    .col {
+        flex: 1;
+        padding: 0 12px;
+        min-width: 250px;
+    }
+
+    .section {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px dashed #e8f4f8;
+    }
+
+    /* Table Styling */
+    .employee-table-container {
+        width: 100%;
+        margin: 20px auto;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+    }
+
+    .employee-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .employee-table thead {
+        background-color: #2d6cdf;
+        color: white;
+    }
+
+    .employee-table th,
+    .employee-table td {
+        text-align: left;
+        padding: 12px 15px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .employee-table th {
+        font-weight: 600;
+    }
+
+    .employee-table tbody tr:hover {
+        background-color: #f5f7ff;
+    }
+
+    /* Scan Section */
+    .scan-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e8f4f8 100%);
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: center;
+    }
+
+    .scan-header {
+        margin-bottom: 20px;
+    }
+
+    .scan-header h3 {
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+
+    .scan-header p {
+        color: #7f8c8d;
+        font-style: italic;
+    }
+
+    .scan-controls {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    /* Camera Styles */
+    .camera-container {
+        background: white;
+        border: 2px solid #3498db;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: center;
+        display: none;
+    }
+
+    .camera-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .camera-header h4 {
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .close-button {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #e74c3c;
+    }
+
+    #qr-reader {
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
+        border: 2px solid #bdc3c7;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .camera-controls {
+        margin: 15px 0;
+    }
+
+    .scan-result {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    .scan-success {
+        background-color: #d5f4e6;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .scan-error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .scan-warning {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+
+    /* Button Styles */
+    .scan-button, .action-button {
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .scan-button:hover, .action-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
+    }
+
+    .scan-button.secondary {
+        background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+    }
+
+    .action-button.secondary {
+        background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+    }
+
+    .camera-icon-btn {
+        background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 80px;
+        height: 80px;
+        font-size: 32px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 10px auto;
+        box-shadow: 0 4px 15px rgba(230, 126, 34, 0.3);
+    }
+
+    .camera-icon-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(230, 126, 34, 0.4);
+    }
+
+    .camera-icon-btn:active {
+        transform: scale(0.95);
+    }
+
+    .camera-icon-btn.loading {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .submit-button {
+        background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 16px 32px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 25px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .submit-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(39, 174, 96, 0.3);
+    }
+
+    .button-icon {
+        font-size: 18px;
+    }
+
+    /* MIS Table Styles */
+    .mis-table-container {
+        margin-top: 25px;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border: 2px solid #e8f4f8;
+    }
+
+    .table-title {
+        font-size: 18px;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+
+    .mis-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+        background-color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .mis-table th {
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        color: white;
+        font-weight: 600;
+        padding: 14px 12px;
+        text-align: left;
+        font-size: 15px;
+    }
+
+    .mis-table td {
+        padding: 12px;
+        border-bottom: 1px solid #e1e8ed;
+        background-color: white;
+    }
+
+    .mis-table tr:nth-child(even) {
+        background-color: #fffaf0;
+    }
+
+    .mis-table tr:hover td {
+        background-color: #fef9e7;
+    }
+
+    .remove-row-btn {
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: background-color 0.3s ease;
+    }
+
+    .remove-row-btn:hover {
+        background-color: #c0392b;
+    }
+
+    .mis-summary {
+        text-align: center;
+        margin-top: 15px;
+        padding: 12px;
+        background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+        color: white;
+        border-radius: 6px;
+        font-size: 16px;
+    }
+
+    /* Message Styles */
+    .message {
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin: 15px 0;
+        text-align: center;
+        font-weight: 500;
+        border-left: 5px solid;
+    }
+
+    .success {
+        background-color: #d5f4e6;
+        color: #155724;
+        border-left-color: #27ae60;
+    }
+
+    .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border-left-color: #e74c3c;
+    }
+
+    .warning {
+        background-color: #fff3cd;
+        color: #856404;
+        border-left-color: #ffc107;
+    }
+
+    /* Permission Modal */
+    .permission-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .permission-modal-content {
+        background-color: white;
+        margin: 20% auto;
+        padding: 0;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .permission-modal-header {
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+    }
+
+    .permission-modal-header h3 {
+        margin: 0;
+        font-size: 20px;
+    }
+
+    .permission-modal-body {
+        padding: 25px;
+        text-align: center;
+    }
+
+    .permission-modal-footer {
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 0 0 12px 12px;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 0;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px 12px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 20px;
+    }
+
+    .close-modal {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: white;
+    }
+
+    .modal-body {
+        padding: 25px;
+    }
+
+    .modal-footer {
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 0 0 12px 12px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    /* Upload Section Styles */
+    .upload-section {
+        margin: 25px 0;
+        text-align: center;
+    }
+
+    .upload-controls {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 15px 0;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        body {
+            padding: 10px;
+        }
+        
+        .container {
+            padding: 20px;
+        }
+        
+        .col {
+            flex: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .row {
+            margin: 0;
+        }
+        
+        .scan-controls {
+            flex-direction: column;
+        }
+        
+        .upload-controls {
+            flex-direction: column;
+        }
+        
+        .mis-table {
+            font-size: 14px;
+        }
+        
+        .mis-table th, .mis-table td {
+            padding: 10px 8px;
+        }
+
+        .camera-icon-btn {
+            width: 70px;
+            height: 70px;
+            font-size: 28px;
+        }
+
+        #qr-reader {
+            max-width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .header h1 {
+            font-size: 24px;
+        }
+        
+        .scan-button, .action-button, .submit-button {
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+        
+        #qr-reader {
+            max-width: 100%;
+        }
+
+        .permission-modal-content {
+            margin: 10% auto;
+            width: 95%;
+        }
+    }
+</style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WORK ORDER FORM</h1>
+        </div>
+
+        <form id="dataForm">
+            <div id="messageArea"></div>
+
+            <div class="section">
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="date">Date *</label>
+                            <input type="date" id="date" name="date" required>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="partNo">Part No *</label>
+                            <select id="partNo" name="partNo" required>
+                                <option value="">Select Part No</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="line">Line *</label>
+                            <select id="line" name="line" required>
+                                <option value="">Select Line</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="batchQty">Batch Qty *</label>
+                            <input type="number" id="batchQty" name="batchQty" required min="1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employee Operations Table -->
+            <div class="employee-table-container">
+                <table class="employee-table" id="employeeOperationsTable">
+                    <thead>
+                        <tr>
+                            <th>SlNo</th>
+                            <th>
+                                <div class="form-group">
+                                    <select id="operationName" name="operationName" required>
+                                        <option value="">Select Operation Name</option>
+                                    </select>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="form-group">
+                                    <select id="employeeName" name="employeeName" required>
+                                        <option value="">Select Employee Name</option>
+                                    </select>
+                                </div>
+                            </th>
+                            <th>Employee Code</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeeTableBody">
+                        <!-- Dynamic Rows Will Be Added Here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Scan Section -->
+            <div class="section scan-section">
+                <div class="scan-header">
+                    <h3>Scan MIS No</h3>
+                </div>
+                
+                <!-- Camera Icon Button -->
+                <button type="button" class="camera-icon-btn" id="cameraScanBtn" title="Scan QR Code">
+                    📷
+                </button>
+                <p style="color: #666; margin: 10px 0;">Tap to open camera scanner</p>
+
+                <!-- Upload QR Code Section with proper spacing -->
+                <div class="upload-section">
+                    <div class="upload-controls">
+                        <button type="button" class="scan-button secondary" id="uploadQrBtn">
+                            <span class="button-icon">📁</span>
+                            Upload QR Code
+                        </button>
+                        <button type="button" class="scan-button secondary" id="addManualCode">
+                            <span class="button-icon">⌨️</span>
+                            Add Manual Code
+                        </button>
+                    </div>
+                    <input type="file" id="uploadQrInput" accept="image/*" style="display:none;">
+                </div>
+
+                <!-- Camera Container -->
+                <div id="cameraContainer" class="camera-container">
+                    <div class="camera-header">
+                        <h4>QR Code Scanner</h4>
+                        <button type="button" id="closeCamera" class="close-button">&times;</button>
+                    </div>
+                    <div id="qr-reader"></div>
+                    <div class="camera-controls">
+                        <button type="button" class="action-button secondary" id="stopCamera">
+                            Stop Camera
+                        </button>
+                    </div>
+                    <div id="scanResult" class="scan-result"></div>
+                </div>
+
+                <div class="scan-controls">
+                    <button type="button" class="scan-button secondary" id="clearMISTable">
+                        <span class="button-icon">🗑️</span>
+                        Clear All MIS
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scanned MIS Numbers Table -->
+            <div class="mis-table-container">
+                <div class="table-title">Scanned MIS Numbers</div>
+                <table class="mis-table">
+                    <thead>
+                        <tr>
+                            <th>Sl No</th>
+                            <th>QR Text</th>
+                            <th>Scan Time</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="misTableBody">
+                        <!-- Dynamic rows will be added here -->
+                    </tbody>
+                </table>
+                <div class="mis-summary">
+                    <strong>Total Scanned: <span id="misCount">0</span> codes</strong>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-button">
+                <span class="button-icon">💾</span>
+                Save
+            </button>
+        </form>
+    </div>
+
+    <!-- Manual Code Entry Modal -->
+    <div id="manualCodeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Manual MIS Code</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="manualMISCode">MIS Number:</label>
+                    <input type="text" id="manualMISCode" placeholder="Enter MIS number">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="action-button secondary" id="cancelManualCode">Cancel</button>
+                <button type="button" class="action-button" id="saveManualCode">Add Code</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Permission Modal -->
+    <div id="permissionModal" class="permission-modal">
+        <div class="permission-modal-content">
+            <div class="permission-modal-header">
+                <h3>Camera Access Required</h3>
+            </div>
+            <div class="permission-modal-body">
+                <p>This app needs access to your camera to scan QR codes.</p>
+                <p>Please allow camera permissions when prompted.</p>
+                <div class="scan-result scan-warning" style="margin-top: 15px;">
+                    💡 <strong>Tip:</strong> Make sure you're accessing this page via HTTPS
+                </div>
+            </div>
+            <div class="permission-modal-footer">
+                <button type="button" class="action-button" id="understandPermission">I Understand</button>
+            </div>
+        </div>
+    </div>
+    
+
+    <script>
+// GLOBAL html5-qrcode object
+let html5QrCode;
+let isCameraOpen = false;
+
+// Open camera when scan button clicked
+document.getElementById("cameraScanBtn").addEventListener("click", function () {
+    console.log("Scan button clicked");
+
+    // Show camera box
+    document.getElementById("cameraContainer").style.display = "block";
+
+    // Start camera only once
+    if (!isCameraOpen) {
+        startCamera();
+    }
+});
+
+// Function to start camera scanner
+function startCamera() {
+    console.log("Starting camera...");
+    isCameraOpen = true;
+
+    html5QrCode = new Html5Qrcode("qr-reader");
+
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        qrCodeSuccess,
+        qrCodeError
+    ).catch(err => {
+        console.log("Camera start error:", err);
+        showScanMessage("Camera permission denied or in use.", "scan-error");
+    });
+}
+
+// QR code detected
+function qrCodeSuccess(decodedText) {
+    console.log("QR Detected:", decodedText);
+
+    showScanMessage("Scanned: " + decodedText, "scan-success");
+
+    addMISToTable(decodedText);
+
+    stopCamera();
+}
+
+// QR scan errors (not harmful)
+function qrCodeError(err) {
+    // console.log(err);
+}
+
+// Stop camera function
+function stopCamera() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            console.log("Camera stopped.");
+            isCameraOpen = false;
+            html5QrCode.clear();
+            document.getElementById("cameraContainer").style.display = "none";
+        });
+    }
+}
+
+// Close button
+document.getElementById("closeCamera").addEventListener("click", stopCamera);
+
+// Stop Camera Button
+document.getElementById("stopCamera").addEventListener("click", stopCamera);
+
+
+// Show scan message
+function showScanMessage(msg, type) {
+    const resultBox = document.getElementById("scanResult");
+    resultBox.className = "scan-result " + type;
+    resultBox.innerText = msg;
+}
+
+
+// ------------------------------
+// Upload QR Code Image Reading
+// ------------------------------
+document.getElementById("uploadQrBtn").addEventListener("click", function () {
+    document.getElementById("uploadQrInput").click();
+});
+
+document.getElementById("uploadQrInput").addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (event) {
+        const img = new Image();
+        img.src = event.target.result;
+
+        img.onload = function () {
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            context.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+            if (code) {
+                showScanMessage("Scanned: " + code.data, "scan-success");
+                addMISToTable(code.data);
+            } else {
+                showScanMessage("No QR code found in image", "scan-error");
+            }
+        }
+    };
+    reader.readAsDataURL(file);
+});
+
+
+// Dummy function (replace with your own)
+function addMISToTable(text) {
+    console.log("Add MIS:", text);
+}
+
+</script>
+
+</body>
+</html>
