@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="{% static 'wof_app/css/style.css' %}">
     <!-- Include html5-qrcode library -->
     <script src="https://unpkg.com/html5-qrcode@2.2.1/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+
 
 
 <style>
@@ -806,90 +809,175 @@
         </div>
     </div>
     
+    
 
     <script>
-// GLOBAL html5-qrcode object
-let html5QrCode;
-let isCameraOpen = false;
+// GLOBALS
+let html5QrCode = null;
+let currentCameraId = null;
+let isCameraRunning = false;
 
-// Open camera when scan button clicked
-document.getElementById("cameraScanBtn").addEventListener("click", function () {
-    console.log("Scan button clicked");
+/*---------------------------------------
+    START CAMERA & SCAN
+---------------------------------------*/
+async function startCamera() {
+    const container = document.getElementById("cameraContainer");
+    container.style.display = "block";
 
-    // Show camera box
-    document.getElementById("cameraContainer").style.display = "block";
-
-    // Start camera only once
-    if (!isCameraOpen) {
-        startCamera();
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qr-reader");
+    } else {
+        try { await html5QrCode.clear(); } catch(e){}
     }
-});
 
-// Function to start camera scanner
-function startCamera() {
-    console.log("Starting camera...");
-    isCameraOpen = true;
+    try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) {
+            showScanMessage("No cameras found", "error");
+            return;
+        }
 
-    html5QrCode = new Html5Qrcode("qr-reader");
+        // Choose back camera
+        const cam = cameras.find(c => /back|rear/i.test(c.label)) || cameras[0];
+        currentCameraId = cam.id;
 
-    html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        qrCodeSuccess,
-        qrCodeError
-    ).catch(err => {
-        console.log("Camera start error:", err);
-        showScanMessage("Camera permission denied or in use.", "scan-error");
+        console.log("Starting camera:", cam.label);
+
+        await html5QrCode.start(
+            currentCameraId,
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 250 }
+            },
+
+            // SUCCESS
+            (decodedText) => {
+                console.log("QR DETECTED:", decodedText);
+                showScanMessage("Scanned: " + decodedText, "success");
+
+                // INSERT INTO TABLE
+                addMISToTable(decodedText);
+
+                // Optional: stop after scan
+                stopCamera();
+            },
+
+
+            // ERROR (harmless)
+            (err) => {}
+        );
+
+        isCameraRunning = true;
+
+    } catch (err) {
+        console.error("Camera error:", err);
+        showScanMessage("Camera failed: " + err, "error");
+    }
+}
+
+/*---------------------------------------
+    STOP CAMERA
+---------------------------------------*/
+function stopCamera() {
+    if (html5QrCode && isCameraRunning) {
+        html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            isCameraRunning = false;
+            document.getElementById("cameraContainer").style.display = "none";
+        });
+    } else {
+        document.getElementById("cameraContainer").style.display = "none";
+    }
+}
+
+/*---------------------------------------
+    ADD MIS TO TABLE
+---------------------------------------*/
+
+
+/*---------------------------------------
+    RENUMBER SL.NO.
+---------------------------------------*/
+function renumberTable() {
+    const rows = document.querySelectorAll("#misTableBody tr");
+    rows.forEach((r, i) => {
+        r.children[0].innerText = i + 1;
     });
 }
 
-// QR code detected
-function qrCodeSuccess(decodedText) {
-    console.log("QR Detected:", decodedText);
-
-    showScanMessage("Scanned: " + decodedText, "scan-success");
-
-    addMISToTable(decodedText);
-
-    stopCamera();
+/*---------------------------------------
+    UPDATE TOTAL COUNT
+---------------------------------------*/
+function updateMISCount() {
+    document.getElementById("misCount").innerText =
+        document.querySelectorAll("#misTableBody tr").length;
 }
 
-// QR scan errors (not harmful)
-function qrCodeError(err) {
-    // console.log(err);
+/*---------------------------------------
+    CLEAR ALL MIS
+---------------------------------------*/
+document.getElementById("clearMISTable").addEventListener("click", function () {
+    document.getElementById("misTableBody").innerHTML = "";
+    updateMISCount();
+});
+
+/*---------------------------------------
+    SHOW MESSAGE
+---------------------------------------*/
+function showScanMessage(msg, type) {
+    const box = document.getElementById("scanResult");
+    box.className = "scan-result " + type;
+    box.innerText = msg;
 }
 
-// Stop camera function
-function stopCamera() {
-    if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-            console.log("Camera stopped.");
-            isCameraOpen = false;
-            html5QrCode.clear();
-            document.getElementById("cameraContainer").style.display = "none";
-        });
-    }
-}
-
-// Close button
+/*---------------------------------------
+    CLICK HANDLERS
+---------------------------------------*/
+document.getElementById("cameraScanBtn").addEventListener("click", startCamera);
 document.getElementById("closeCamera").addEventListener("click", stopCamera);
-
-// Stop Camera Button
 document.getElementById("stopCamera").addEventListener("click", stopCamera);
 
+function addMISToTable(text) {
+    console.log("ADDING TO TABLE:", text);
 
-// Show scan message
-function showScanMessage(msg, type) {
-    const resultBox = document.getElementById("scanResult");
-    resultBox.className = "scan-result " + type;
-    resultBox.innerText = msg;
+    if (!text || text.trim() === "") return;
+
+    const tbody = document.getElementById("misTableBody");
+
+    // Prevent duplicates
+    const exists = [...tbody.querySelectorAll(".mis-text")]
+        .some(td => td.innerText.trim() === text.trim());
+
+    if (exists) {
+        showScanMessage("Already added.", "warning");
+        return;
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+        <td>${tbody.children.length + 1}</td>
+        <td class="mis-text">${text}</td>
+        <td>${new Date().toLocaleString()}</td>
+        <td>
+            <button type="button" class="remove-row-btn">Remove</button>
+        </td>
+    `;
+
+    tr.querySelector(".remove-row-btn").onclick = () => {
+        tr.remove();
+        updateMISCount();
+        renumberTable();
+    };
+
+    tbody.appendChild(tr);
+    updateMISCount();
 }
 
 
-// ------------------------------
-// Upload QR Code Image Reading
-// ------------------------------
-document.getElementById("uploadQrBtn").addEventListener("click", function () {
+/*---------------------------------------
+    UPLOAD QR DECODE USING jsQR
+---------------------------------------*/
+document.getElementById("uploadQrBtn").addEventListener("click", () => {
     document.getElementById("uploadQrInput").click();
 });
 
@@ -898,38 +986,37 @@ document.getElementById("uploadQrInput").addEventListener("change", function (e)
     if (!file) return;
 
     const reader = new FileReader();
+
     reader.onload = function (event) {
         const img = new Image();
         img.src = event.target.result;
 
         img.onload = function () {
             const canvas = document.createElement("canvas");
-            const context = canvas.getContext("2d");
+            const ctx = canvas.getContext("2d");
+
             canvas.width = img.width;
             canvas.height = img.height;
-            context.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
             const code = jsQR(imageData.data, canvas.width, canvas.height);
 
             if (code) {
-                showScanMessage("Scanned: " + code.data, "scan-success");
+                showScanMessage("Scanned: " + code.data, "success");
                 addMISToTable(code.data);
             } else {
-                showScanMessage("No QR code found in image", "scan-error");
+                showScanMessage("No QR code found in image", "error");
             }
-        }
+        };
     };
+
     reader.readAsDataURL(file);
 });
-
-
-// Dummy function (replace with your own)
-function addMISToTable(text) {
-    console.log("Add MIS:", text);
-}
-
 </script>
+
 
 </body>
 </html>
