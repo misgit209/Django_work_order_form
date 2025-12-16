@@ -75,22 +75,32 @@ WSGI_APPLICATION = 'work_order_form.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'mssql',
-#         'NAME': 'sel2_master',
-#         'USER': 'sa',
-#         'PASSWORD': 'essl',
-#        'HOST': r'172.20.16.254\SQLEXPRESS',
-#         'PORT': '',
-#         'OPTIONS': {
-#             'driver': 'ODBC Driver 17 for SQL Server',
-#             'extra_params': 'Encrypt=no;TrustServerCertificate=yes;'
-#         }
-#     }
-
-   
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'mssql',
+        'NAME': 'SEL2_Master',
+        'USER': 'cltte',
+        'PASSWORD': 'Cltte@#u2',
+        'HOST': r'172.20.0.254',
+        'PORT': '',
+        'OPTIONS': {
+            'driver': 'ODBC Driver 18 for SQL Server',
+            'extra_params': 'Encrypt=no;TrustServerCertificate=yes;'
+        },
+    },
+    'employee': {
+        'ENGINE': 'mssql',
+        'NAME': 'SEL2_Personnel1516',
+        'USER': 'cltte',
+        'PASSWORD': 'Cltte@#u2',
+        'HOST': r'172.20.0.254',
+        'PORT': '',
+        'OPTIONS': {
+            'driver': 'ODBC Driver 18 for SQL Server',
+            'extra_params': 'Encrypt=no;TrustServerCertificate=yes;'
+        },
+    },
+}
 
 
 

@@ -672,18 +672,18 @@
                             <th>
                                 <div class="form-group">
                                     <select id="operationName" name="operationName" required>
-                                        <option value="">Select Operation Name</option>
+                                        <option value="">Operation Name</option>
                                     </select>
                                 </div>
                             </th>
                             <th>
                                 <div class="form-group">
                                     <select id="employeeName" name="employeeName" required>
-                                        <option value="">Select Employee Name</option>
+                                        <option value="">Employee Name</option>
                                     </select>
                                 </div>
                             </th>
-                            <th>Employee Code</th>
+                            
                         </tr>
                     </thead>
                     <tbody id="employeeTableBody">
@@ -811,11 +811,216 @@
     
     
 
-    <script>
+        <!-- Duplicate MIS Warning Modal -->
+        <div id="duplicateWarningModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>⚠️ Duplicate MIS Code</h3>
+                    <button type="button" class="close-modal" id="closeDuplicateModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p id="duplicateWarningText">This MIS code has already been scanned and saved.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="action-button" id="acknowledgeDuplicate">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
 // GLOBALS
 let html5QrCode = null;
 let currentCameraId = null;
 let isCameraRunning = false;
+
+/*---------------------------------------
+    FETCH ITEM CODES FROM FINISHEDGOODSMASTER
+---------------------------------------*/
+document.addEventListener("DOMContentLoaded", function() {
+    fetchItemCodes();
+    fetchLineNames();
+    fetchOperationNames();
+    fetchEmployees();
+});
+
+// Submit form via fetch and save work order
+document.getElementById('dataForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    // include first scanned MIS code (if any)
+    const firstMIS = (() => {
+        const firstRow = document.querySelector('#misTableBody .mis-text');
+        return firstRow ? firstRow.innerText.trim() : null;
+    })();
+
+    const payload = {
+        date: document.getElementById('date').value,
+        partNo: document.getElementById('partNo').value,
+        line: document.getElementById('line').value,
+        batchQty: document.getElementById('batchQty').value,
+        misslipno: firstMIS,
+        employeeName: document.getElementById('employeeName').value,
+        operationName: document.getElementById('operationName').value
+    };
+
+    fetch('/api/save_work_order/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        const msgArea = document.getElementById('messageArea');
+            if (data && data.success) {
+            if (msgArea) msgArea.innerHTML = '<div class="message success">Work order saved (id: ' + data.id + ')</div>';
+            document.getElementById('dataForm').reset();
+            // clear scanned MIS table after successful save
+            document.getElementById('misTableBody').innerHTML = '';
+            updateMISCount();
+        } else {
+            if (msgArea) msgArea.innerHTML = '<div class="message error">Save failed: ' + (data.error || 'unknown') + '</div>';
+        }
+    })
+    .catch(err => {
+        const msgArea = document.getElementById('messageArea');
+        console.error('Save error', err);
+        if (msgArea) msgArea.innerHTML = '<div class="message error">Save failed</div>';
+    });
+});
+
+function fetchItemCodes() {
+    fetch("/api/get_tr_item_codes/")
+        .then(response => response.json())
+        .then(data => {
+            const partNoSelect = document.getElementById("partNo");
+            if (!partNoSelect) return;
+
+            // Keep the first placeholder option, remove any others
+            while (partNoSelect.options.length > 1) {
+                partNoSelect.remove(1);
+            }
+
+            if (!data || data.length === 0) {
+                console.warn("No item codes returned from server");
+                return;
+            }
+
+            data.forEach(itemCode => {
+                const option = document.createElement("option");
+                option.value = itemCode;
+                option.textContent = itemCode;
+                partNoSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching item codes:", error);
+            const msgArea = document.getElementById('messageArea');
+            if (msgArea) {
+                msgArea.innerHTML = '<div class="message error">Failed to load Part Numbers</div>';
+            }
+        });
+}
+
+function fetchLineNames() {
+    fetch("/api/get_line_name/")
+        .then(response => response.json())
+        .then(data => {
+            const lineSelect = document.getElementById("line");
+            if (!lineSelect) return;
+
+            // Keep the first placeholder option, remove any others
+            while (lineSelect.options.length > 1) {
+                lineSelect.remove(1);
+            }
+
+            if (!data || data.length === 0) {
+                console.warn("No line names returned from server");
+                return;
+            }
+
+            data.forEach(name => {
+                const option = document.createElement("option");
+                option.value = name;
+                option.textContent = name;
+                lineSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching line names:", error);
+            const msgArea = document.getElementById('messageArea');
+            if (msgArea) {
+                msgArea.innerHTML = '<div class="message error">Failed to load Lines</div>';
+            }
+        });
+}
+
+function fetchOperationNames() {
+    fetch("/api/get_operation_name/")
+        .then(response => response.json())
+        .then(data => {
+            const opSelect = document.getElementById("operationName");
+            if (!opSelect) return;
+
+            while (opSelect.options.length > 1) {
+                opSelect.remove(1);
+            }
+
+            if (!data || data.length === 0) {
+                console.warn("No operation names returned from server");
+                return;
+            }
+
+            data.forEach(name => {
+                const option = document.createElement("option");
+                option.value = name;
+                option.textContent = name;
+                opSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching operation names:", error);
+            const msgArea = document.getElementById('messageArea');
+            if (msgArea) {
+                msgArea.innerHTML = '<div class="message error">Failed to load Operations</div>';
+            }
+        });
+}
+
+function fetchEmployees() {
+    fetch("/api/get_employee_name/")
+        .then(response => response.json())
+        .then(data => {
+            const empSelect = document.getElementById("employeeName");
+            if (!empSelect) return;
+
+            while (empSelect.options.length > 1) {
+                empSelect.remove(1);
+            }
+
+            if (!data || data.length === 0) {
+                console.warn("No employees returned from server");
+                return;
+            }
+
+            data.forEach(obj => {
+                const name = obj.EmpName || obj.empname || obj.name || obj.Emp_Name || '';
+                const code = obj.EmpCode || obj.empcode || obj.code || '';
+                const option = document.createElement("option");
+                option.value = code || name;
+                option.textContent = name + (code ? ` (${code})` : '');
+                empSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching employees:", error);
+            const msgArea = document.getElementById('messageArea');
+            if (msgArea) {
+                msgArea.innerHTML = '<div class="message error">Failed to load Employees</div>';
+            }
+        });
+}
 
 /*---------------------------------------
     START CAMERA & SCAN
@@ -944,15 +1149,34 @@ function addMISToTable(text) {
 
     const tbody = document.getElementById("misTableBody");
 
-    // Prevent duplicates
-    const exists = [...tbody.querySelectorAll(".mis-text")]
+    // Check for duplicates in current table
+    const existsInTable = [...tbody.querySelectorAll(".mis-text")]
         .some(td => td.innerText.trim() === text.trim());
 
-    if (exists) {
-        showScanMessage("Already added.", "warning");
+    if (existsInTable) {
+            showDuplicateWarning("Already added in this session.");
         return;
     }
 
+    // Check if already exists in database (previously scanned)
+    fetch(`/api/check_mis_duplicate/?misslipno=${encodeURIComponent(text)}`)
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.exists) {
+                    showDuplicateWarning(`Already scanned! (Found ${data.count} time(s) in database)`);
+                return;
+            }
+            // Not a duplicate, add to table
+            addMISRowToTable(text, tbody);
+        })
+        .catch(err => {
+            console.error("Error checking duplicate:", err);
+            // On error, proceed with adding (fail open)
+            addMISRowToTable(text, tbody);
+        });
+}
+
+function addMISRowToTable(text, tbody) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
         <td>${tbody.children.length + 1}</td>
@@ -1014,6 +1238,86 @@ document.getElementById("uploadQrInput").addEventListener("change", function (e)
     };
 
     reader.readAsDataURL(file);
+});
+
+/*---------------------------------------
+    MANUAL CODE MODAL HANDLERS
+---------------------------------------*/
+const manualCodeModal = document.getElementById("manualCodeModal");
+const addManualCodeBtn = document.getElementById("addManualCode");
+const saveManualCodeBtn = document.getElementById("saveManualCode");
+const cancelManualCodeBtn = document.getElementById("cancelManualCode");
+const closeModalBtn = document.querySelector(".close-modal");
+const manualMISCodeInput = document.getElementById("manualMISCode");
+
+// Open modal
+addManualCodeBtn.addEventListener("click", function(e) {
+    e.preventDefault();
+    manualCodeModal.style.display = "block";
+    manualMISCodeInput.focus();
+});
+
+// Close modal
+function closeManualModal() {
+    manualCodeModal.style.display = "none";
+    manualMISCodeInput.value = "";
+}
+
+closeModalBtn.addEventListener("click", closeManualModal);
+cancelManualCodeBtn.addEventListener("click", closeManualModal);
+
+// Save manual code
+saveManualCodeBtn.addEventListener("click", function() {
+    const code = manualMISCodeInput.value.trim();
+    if (code) {
+        addMISToTable(code);
+        closeManualModal();
+        showScanMessage("Manual code added: " + code, "success");
+    } else {
+        showScanMessage("Please enter a code", "warning");
+    }
+});
+
+// Allow Enter key to save
+manualMISCodeInput.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        saveManualCodeBtn.click();
+    }
+});
+
+// Close modal when clicking outside of it
+window.addEventListener("click", function(e) {
+    if (e.target === manualCodeModal) {
+        closeManualModal();
+    }
+});
+
+/*---------------------------------------
+    DUPLICATE WARNING MODAL
+---------------------------------------*/
+function showDuplicateWarning(message) {
+    const modal = document.getElementById("duplicateWarningModal");
+    const warningText = document.getElementById("duplicateWarningText");
+    warningText.textContent = message;
+    modal.style.display = "block";
+}
+
+const duplicateModal = document.getElementById("duplicateWarningModal");
+const closeDuplicateBtn = document.getElementById("closeDuplicateModal");
+const acknowledgeDuplicateBtn = document.getElementById("acknowledgeDuplicate");
+
+function closeDuplicateWarning() {
+    duplicateModal.style.display = "none";
+}
+
+closeDuplicateBtn.addEventListener("click", closeDuplicateWarning);
+acknowledgeDuplicateBtn.addEventListener("click", closeDuplicateWarning);
+
+// Close modal when clicking outside of it
+window.addEventListener("click", function(e) {
+    if (e.target === duplicateModal) {
+        closeDuplicateWarning();
+    }
 });
 </script>
 
